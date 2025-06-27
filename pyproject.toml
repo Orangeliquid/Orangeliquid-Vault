@@ -1,0 +1,12 @@
+[project]
+name = "orangeliquid-vault"
+version = "0.1.0"
+description = "A secure, local password and file vault with encryption"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "bcrypt>=4.3.0",
+    "cryptography>=45.0.4",
+    "ruff>=0.12.1",
+    "streamlit>=1.46.1",
+]
