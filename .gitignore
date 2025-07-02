@@ -5,6 +5,10 @@ build/
 dist/
 wheels/
 *.egg-info
+.idea/
+.secret_key
+.vault_salt
+vault.db
 
 # Virtual environments
 .venv
