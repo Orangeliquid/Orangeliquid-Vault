@@ -1,6 +1,8 @@
 import streamlit as st
+import time
 
 from app import auth
+from app.database import init_db
 
 
 def set_master_password() -> bool:
@@ -20,8 +22,13 @@ def set_master_password() -> bool:
 
         hashed = auth.hash_password(pw1)
         auth.save_master_password_hash(hashed)
-        st.success("Master password set! Please reload and log in.")
-        return True
+
+        init_db()
+
+        st.success("Master password set!")
+        time.sleep(2)  # allow user to see that the password was set correctly
+
+        st.rerun()
 
     return False
 
@@ -29,24 +36,28 @@ def set_master_password() -> bool:
 def login() -> bool:
     st.header("Login")
 
-    password = st.text_input("Enter master password", type="password")
+    with st.form("login", enter_to_submit=True):
+        password = st.text_input(label="Enter Master Password", placeholder="Master Password", type="password")
 
-    if st.button("Login"):
-        stored_hash = auth.load_master_password_hash()
+        if st.form_submit_button("Save"):
+            stored_hash = auth.load_master_password_hash()
 
-        if stored_hash is None:
-            st.error("No master password found. Please set one first.")
-            return False
+            if stored_hash is None:
+                st.error("No master password found. Please set one first.")
+                return False
 
-        if auth.verify_password(password, stored_hash):
-            salt = auth.get_or_create_salt()
-            key = auth.derive_key(password, salt)
-            st.session_state["key"] = key
-            st.session_state["authenticated"] = True
-            st.success("Login Successful!")
-            return True
-        else:
-            st.error("Incorrect password.")
-            return False
+            if auth.verify_password(password, stored_hash):
+                salt = auth.get_or_create_salt()
+                key = auth.derive_key(password, salt)
+                st.session_state["key"] = key
+                st.session_state["authenticated"] = True
+                st.success("Login Successful!")
+
+                time.sleep(1)  # allow user some time to see they logged in successfully before reloading page
+
+                st.rerun()
+            else:
+                st.error("Incorrect password.")
+                return False
 
     return False
