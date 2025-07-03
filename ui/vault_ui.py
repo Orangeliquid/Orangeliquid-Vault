@@ -1,6 +1,7 @@
 import streamlit as st
 from cryptography.fernet import Fernet
 import time
+from collections import defaultdict
 
 from app.models.schemas import VaultEntryCreate
 from app.crud_vault import create_entry, get_all_entries
@@ -17,6 +18,8 @@ def create_new_entry_form():
         password = st.text_input("Password", type="password", key="form_password")
         email = st.text_input("Email (optional)", placeholder="johndoe123@provider.com", key="form_email")
         notes = st.text_input("Notes (optional)", placeholder="Very detailed notes on my account", key="form_notes")
+
+        service = service.strip().lower()  # Normalize service for later grouping in display
 
         col1, spacer, col2 = st.columns([1, 6, 1])
 
@@ -69,6 +72,7 @@ def create_new_entry_form():
 
 
 def view_entries():
+    st.write("---")
     key = st.session_state.get("key")
     if not key:
         st.error("Encryption key is missing. Please log in again.")
@@ -81,31 +85,32 @@ def view_entries():
         st.info("No entries yet.")
         return
 
-        # Initialize selection
     if "selected_entry_index" not in st.session_state:
         st.session_state.selected_entry_index = 0
 
-    # Layout with two columns
+    service_groups = defaultdict(list)
+    for i, entry in enumerate(entries):
+        decrypted = decrypt_entry(entry, fernet)
+        service_groups[decrypted["service"]].append((i, decrypted))
+
     col1, col2 = st.columns([2, 5], gap="large")
 
-    # --- LEFT COLUMN: Entry titles ---
     with col1:
         st.write("### Entries")
-        for i, entry in enumerate(entries):
-            decrypted = decrypt_entry(entry, fernet)
-            label = (
-                f"{decrypted['service']}"
-                f"{decrypted['username']}"
-            )
-            if st.button(label, key=f"entry_button_{i}"):
-                st.session_state.selected_entry_index = i
+        st.write("")
 
-    # --- RIGHT COLUMN: Entry details ---
+        for service, entry_list in sorted(service_groups.items()):
+            st.markdown(f"**{service.title()}**")
+            for i, decrypted in entry_list:
+                username = decrypted["username"]
+                if st.button(username, key=f"entry_button_{i}"):
+                    st.session_state.selected_entry_index = i
+
     with col2:
         selected_index = st.session_state.selected_entry_index
         selected_entry = decrypt_entry(entries[selected_index], fernet)
 
-        st.write(f"### {selected_entry['service']}")
+        st.write(f"### {selected_entry['service'].title()}")
         st.markdown(f"**Username:** {selected_entry['username']}")
 
         # Password field with toggle
@@ -117,7 +122,7 @@ def view_entries():
             st.code(display_pw, language="text")
 
         if selected_entry["email"]:
-            st.markdown(f"**Email:** {selected_entry['email']}")
+            st.markdown(f"**Email:**\n{selected_entry['email']}")
         if selected_entry["notes"]:
             st.markdown(f"**Notes:** {selected_entry['notes']}")
         st.markdown(f"**Created At:** {selected_entry['created_at']}")
