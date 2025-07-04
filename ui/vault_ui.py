@@ -6,23 +6,48 @@ from collections import defaultdict
 from app.models.schemas import VaultEntryCreate
 from app.crud_vault import create_entry, get_all_entries
 from app.encryption import encrypt_field, decrypt_entry
+from app.utils.generator import generate_password
+from app.models.password_options import PasswordOptions
 
 
 def create_new_entry_form():
     st.subheader("Add a New Vault Entry")
 
-    form_suffix = st.session_state.get("form_suffix", "")
-    with st.form(f"create_entry_{form_suffix}"):
-        service = st.text_input("Service", placeholder="Youtube", key="form_service")
-        username = st.text_input("Username", placeholder="Myusername123", key="form_username")
-        password = st.text_input("Password", type="password", key="form_password")
-        email = st.text_input("Email (optional)", placeholder="johndoe123@provider.com", key="form_email")
-        notes = st.text_input("Notes (optional)", placeholder="Very detailed notes on my account", key="form_notes")
+    if "form_password" not in st.session_state:
+        st.session_state["form_password"] = ""
 
-        service = service.strip().lower()  # Normalize service for later grouping in display
+    def generate_password_callback():
+        opts = PasswordOptions(
+            length=st.session_state.get("gen_length", 16),
+            include_numbers=st.session_state.get("gen_digits", True),
+            include_symbols=st.session_state.get("gen_symbols", True),
+        )
+        generated_pw = generate_password(opts)
+        st.session_state["form_password"] = generated_pw
+        st.success("Password generated and filled!")
+        st.rerun()
+
+    form_suffix = st.session_state.get("form_suffix", "")
+
+    with st.form(f"create_entry_{form_suffix}"):
+        service = st.text_input(label="Service", placeholder="Youtube", key="form_service")
+        username = st.text_input(label="Username", placeholder="Myusername123", key="form_username")
+        email = st.text_input(label="Email (optional)", placeholder="johndoe123@provider.com", key="form_email")
+
+        notes = st.text_input(
+            label="Notes (optional)",
+            placeholder="Very detailed notes on my account",
+            key="form_notes"
+        )
+
+        password = st.text_input(
+            label="Password",
+            type="password",
+            value=st.session_state["form_password"],
+            key="password_input",
+        )
 
         col1, spacer, col2 = st.columns([1, 6, 1])
-
         with col1:
             save_entry = st.form_submit_button("Save")
         with col2:
@@ -45,8 +70,7 @@ def create_new_entry_form():
 
                 fernet = Fernet(key)
 
-                # We decode at the end to change the encrypted bytes into a string for storage
-                encrypted_service = encrypt_field(service, fernet)
+                encrypted_service = encrypt_field(service.strip().lower(), fernet)
                 encrypted_username = encrypt_field(username, fernet)
                 encrypted_password = encrypt_field(password, fernet)
                 encrypted_email = encrypt_field(email, fernet) if email else None
@@ -69,6 +93,15 @@ def create_new_entry_form():
 
             except Exception as e:
                 st.error(f"Error saving entry: {e}")
+
+    # Outside the form, so reactive outside form submit cycle
+    if st.checkbox("Generate Random Password", key="generate_random_password"):
+        st.slider(label="Length", min_value=8, max_value=32, value=16, key="gen_length")
+        st.checkbox(label="Include Digits", value=True, key="gen_digits")
+        st.checkbox(label="Include Symbols", value=True, key="gen_symbols")
+        if st.button("Generate Password"):
+            generate_password_callback()
+            st.rerun()
 
 
 def view_entries():
@@ -122,7 +155,7 @@ def view_entries():
             st.code(display_pw, language="text")
 
         if selected_entry["email"]:
-            st.markdown(f"**Email:**\n{selected_entry['email']}")
+            st.markdown(f"**Email:** {selected_entry['email']}")
         if selected_entry["notes"]:
             st.markdown(f"**Notes:** {selected_entry['notes']}")
         st.markdown(f"**Created At:** {selected_entry['created_at']}")
