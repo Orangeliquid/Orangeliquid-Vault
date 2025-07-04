@@ -22,7 +22,15 @@ def main():
 # end of auth logic
 
     if st.session_state.get("reset_form"):
-        for key in ["form_service", "form_username", "form_password", "form_email", "form_notes"]:
+        for key in [
+            "form_service",
+            "form_username",
+            "form_password",
+            "form_email",
+            "form_notes",
+            "generate_random_password",
+            "password_input",
+        ]:
             st.session_state.pop(key, None)
             print(f"Del called on key: {key}")
         st.session_state["reset_form"] = False
@@ -58,9 +66,9 @@ def main():
         vault_ui.view_entries()
 
 
-# Todo - Fix left col entries(make service above username), make entries searchable
-# Todo - integrate password generation for user
-
+# Todo - make entries searchable
+# Todo - integrate password generation for user, integrate strength reading of current password
+# Todo - integrate entry value changing via view entries
 
 if __name__ == '__main__':
     main()
