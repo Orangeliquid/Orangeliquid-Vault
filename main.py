@@ -7,7 +7,10 @@ st.set_page_config(page_title="Orangeliquid Vault", page_icon="assets/orange_ali
 
 
 def main():
-    st.title("Orangeliquid Vault")
+    st.markdown(
+        "<h1 style='color:#FFA500; text-align: center; '>ORANGELIQUID VAULT</h1>",
+        unsafe_allow_html=True
+    )
 
     # Auth logic
     if "authenticated" not in st.session_state:
@@ -66,8 +69,7 @@ def main():
         vault_ui.view_entries()
 
 
-# Todo - make entries searchable
-# Todo - integrate password generation for user, integrate strength reading of current password
+# Todo - integrate strength reading of current passwords
 # Todo - integrate entry value changing via view entries
 
 if __name__ == '__main__':
