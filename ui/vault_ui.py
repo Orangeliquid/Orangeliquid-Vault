@@ -8,6 +8,7 @@ from app.crud_vault import create_entry, get_all_entries
 from app.encryption import encrypt_field, decrypt_entry
 from app.utils.generator import generate_password
 from app.models.password_options import PasswordOptions
+from app.utils.entry_helpers import get_flattened_entries, render_entry_button
 
 
 def create_new_entry_form():
@@ -105,7 +106,9 @@ def create_new_entry_form():
 
 
 def view_entries():
-    st.write("---")
+    st.session_state["reset_form"] = True
+    st.write("")
+
     key = st.session_state.get("key")
     if not key:
         st.error("Encryption key is missing. Please log in again.")
@@ -121,29 +124,76 @@ def view_entries():
     if "selected_entry_index" not in st.session_state:
         st.session_state.selected_entry_index = 0
 
+    if "results_found_count" not in st.session_state:
+        st.session_state.results_found_count = None
+
     service_groups = defaultdict(list)
     for i, entry in enumerate(entries):
         decrypted = decrypt_entry(entry, fernet)
         service_groups[decrypted["service"]].append((i, decrypted))
 
-    col1, col2 = st.columns([2, 5], gap="large")
+    entry_search = st.text_input(label="", label_visibility="hidden", placeholder="Search All Entries")
+    entry_search_lower = entry_search.lower()  # lowercase entry_search for easier matching
+
+    entry_search_matches = []
+    for i, decrypted in get_flattened_entries(service_groups):
+        username = decrypted["username"]
+        service = decrypted["service"]
+        email = decrypted.get("email", "")
+
+        username_l = username.lower()
+        service_l = service.lower()
+        email_l = email.lower() if email else ""
+
+        if username_l.startswith(entry_search_lower):
+            hit = username
+        elif service_l.startswith(entry_search_lower):
+            hit = service.title()
+        elif email_l.startswith(entry_search_lower):
+            hit = email
+        else:
+            continue
+
+        entry_search_matches.append((service, username, i, hit))
+
+    st.session_state.results_found_count = len(entry_search_matches)
+
+    if "results_found_count" in st.session_state and entry_search:
+        st.write(f"{st.session_state.results_found_count} results for '{entry_search}'")
+
+    col1, col2 = st.columns([3, 4], gap="large")
 
     with col1:
-        st.write("### Entries")
-        st.write("")
+        with st.container(height=500):
 
-        for service, entry_list in sorted(service_groups.items()):
-            st.markdown(f"**{service.title()}**")
-            for i, decrypted in entry_list:
-                username = decrypted["username"]
-                if st.button(username, key=f"entry_button_{i}"):
-                    st.session_state.selected_entry_index = i
+            if entry_search:
+                for service, username, i, value_hit in entry_search_matches:
+                    render_entry_button(service, username, i, value_hit)
+
+            else:
+                sort_option = st.selectbox("Sort by", ["A-Z", "Z-A", "Most Recent"], key="sort_option")
+
+                if sort_option == "Most Recent":
+                    flattened = get_flattened_entries(service_groups)
+                    flattened.sort(key=lambda x: x[1].get("created_at", ""), reverse=True)
+                    flattened = flattened[:10]
+
+                    for i, decrypted in flattened:
+                        render_entry_button(decrypted["service"], decrypted["username"], i)
+
+                else:
+                    sorted_services = sorted(service_groups.items(), reverse=(sort_option == "Z-A"))
+                    for service, entry_list in sorted_services:
+                        st.markdown(f"### <span style='color:#FFA500'>{service.title()}</span>", unsafe_allow_html=True)
+                        for i, decrypted in entry_list:
+                            if st.button(decrypted["username"], key=f"entry_button_{i}"):
+                                st.session_state.selected_entry_index = i
 
     with col2:
         selected_index = st.session_state.selected_entry_index
         selected_entry = decrypt_entry(entries[selected_index], fernet)
 
-        st.write(f"### {selected_entry['service'].title()}")
+        st.markdown(f"### <span style='color:#FFA500'>{selected_entry['service'].title()}</span>", unsafe_allow_html=True)
         st.markdown(f"**Username:** {selected_entry['username']}")
 
         # Password field with toggle
