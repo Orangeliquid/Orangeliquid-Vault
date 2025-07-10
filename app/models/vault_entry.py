@@ -14,4 +14,5 @@ class VaultEntry(Base):
     password_encrypted = Column(String, nullable=False)
     email = Column(String, nullable=True)
     notes = Column(String, nullable=True)
+    strength_rating = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
