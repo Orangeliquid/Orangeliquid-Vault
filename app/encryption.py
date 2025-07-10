@@ -16,6 +16,7 @@ def decrypt_entry(entry, fernet: Fernet):
             if entry.notes not in [None, "None"]
             else None
         ),
+        "strength_rating": fernet.decrypt(entry.strength_rating.encode()).decode(),
         "created_at": entry.created_at,
     }
 
