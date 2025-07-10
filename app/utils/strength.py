@@ -1,16 +1,16 @@
 from app.utils.generator import UPPERCASE, LOWERCASE, NUMBERS, SYMBOLS
 
 
-LABEL_COLORS = {
-    "Very Weak": "purple",
-    "Weak": "red",
-    "Decent": "orange",
-    "Strong": "#5f13ff",
-    "Fantastic": "#6eff00"
+STRENGTH_LABELS = {
+    0: ("Very Weak", "purple"),
+    1: ("Weak", "red"),
+    2: ("Decent", "orange"),
+    3: ("Strong", "#5f13ff"),
+    4: ("Fantastic", "#6eff00"),
 }
 
 
-def evaluate_strength(password: str) -> tuple[int, str]:
+def evaluate_strength(password: str) -> int:
     checks = {
         "length": len(password),
         "uppercase_chars": 0,
@@ -36,12 +36,4 @@ def evaluate_strength(password: str) -> tuple[int, str]:
 
     strength = sum([has_length, has_upper_and_lower, has_numbers, has_symbols])
 
-    strength_labels = {
-        0: "Very Weak",
-        1: "Weak",
-        2: "Decent",
-        3: "Strong",
-        4: "Fantastic",
-    }
-
-    return strength, strength_labels[strength]
+    return strength
