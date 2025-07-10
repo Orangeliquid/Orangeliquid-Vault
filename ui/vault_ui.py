@@ -9,6 +9,7 @@ from app.encryption import encrypt_field, decrypt_entry
 from app.utils.generator import generate_password
 from app.models.password_options import PasswordOptions
 from app.utils.entry_helpers import get_flattened_entries, render_entry_button
+from app.utils.strength import evaluate_strength, STRENGTH_LABELS
 
 
 def create_new_entry_form():
@@ -69,6 +70,8 @@ def create_new_entry_form():
                     st.error("Encryption key not found. Please log in again.")
                     return
 
+                password_strength_val = evaluate_strength(password=password)
+
                 fernet = Fernet(key)
 
                 encrypted_service = encrypt_field(service.strip().lower(), fernet)
@@ -76,6 +79,7 @@ def create_new_entry_form():
                 encrypted_password = encrypt_field(password, fernet)
                 encrypted_email = encrypt_field(email, fernet) if email else None
                 encrypted_notes = encrypt_field(notes, fernet) if notes else None
+                encrypted_strength_rating = encrypt_field(str(password_strength_val), fernet)
 
                 entry_data = VaultEntryCreate(
                     service=encrypted_service,
@@ -83,6 +87,7 @@ def create_new_entry_form():
                     password_encrypted=encrypted_password,
                     email=encrypted_email,
                     notes=encrypted_notes,
+                    strength_rating=encrypted_strength_rating
                 )
 
                 create_entry(entry_data)
@@ -200,9 +205,16 @@ def view_entries():
         pw_col1, pw_col2 = st.columns([6, 1])
         with pw_col2:
             show_password = st.checkbox("👁", key=f"show_password_{selected_index}")
+
         with pw_col1:
             display_pw = selected_entry["password"] if show_password else "●●●●●●●●"
             st.code(display_pw, language="text")
+
+            strength_label, strength_color = STRENGTH_LABELS[int(selected_entry["strength_rating"])]
+            st.markdown(
+                f"<span style='color:{strength_color}; font-size: 15px; font-style: italic;'>{strength_label}</span>",
+                unsafe_allow_html=True
+            )
 
         if selected_entry["email"]:
             st.markdown(f"**Email:** {selected_entry['email']}")
