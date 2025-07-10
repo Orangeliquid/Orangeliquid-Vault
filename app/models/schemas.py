@@ -10,6 +10,7 @@ class VaultEntryCreate(BaseModel):
     password_encrypted: str = Field(..., min_length=1)
     email: Optional[str] = None
     notes: Optional[str] = None
+    strength_rating: str = Field(..., min_length=1)
 
 
 class VaultEntryRead(VaultEntryCreate):
