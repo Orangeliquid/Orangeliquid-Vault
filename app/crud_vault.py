@@ -12,6 +12,7 @@ def create_entry(entry_data: VaultEntryCreate):
         password_encrypted=entry_data.password_encrypted,
         email=entry_data.email,
         notes=entry_data.notes,
+        strength_rating=entry_data.strength_rating,
     )
 
     db.add(entry)
