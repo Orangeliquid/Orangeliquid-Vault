@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
@@ -19,4 +19,13 @@ class VaultEntryRead(VaultEntryCreate):
 
     class Config:
         from_attributes = True
+
+
+class VaultEntryUpdate(BaseModel):
+    service: Optional[str] = None
+    username: Optional[str] = None
+    password_encrypted: Optional[str] = None
+    email: Optional[str] = None
+    notes: Optional[str] = None
+    strength_rating: Optional[str] = None
 
