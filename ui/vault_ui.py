@@ -3,13 +3,25 @@ from cryptography.fernet import Fernet
 import time
 from collections import defaultdict
 
-from app.models.schemas import VaultEntryCreate
-from app.crud_vault import create_entry, get_all_entries
+from app.models.schemas import VaultEntryCreate, VaultEntryUpdate
+from app.crud_vault import create_entry, get_all_entries, update_entry
 from app.encryption import encrypt_field, decrypt_entry
 from app.utils.generator import generate_password
 from app.models.password_options import PasswordOptions
 from app.utils.entry_helpers import get_flattened_entries, render_entry_button
 from app.utils.strength import evaluate_strength, STRENGTH_LABELS
+
+
+def generate_password_callback(key_to_fill: str):
+    opts = PasswordOptions(
+        length=st.session_state.get("gen_length", 16),
+        include_numbers=st.session_state.get("gen_digits", True),
+        include_symbols=st.session_state.get("gen_symbols", True),
+    )
+    generated_pw = generate_password(opts)
+    st.session_state[key_to_fill] = generated_pw
+    st.success("Password generated and filled!")
+    st.rerun()
 
 
 def create_new_entry_form():
@@ -18,20 +30,9 @@ def create_new_entry_form():
     if "form_password" not in st.session_state:
         st.session_state["form_password"] = ""
 
-    def generate_password_callback():
-        opts = PasswordOptions(
-            length=st.session_state.get("gen_length", 16),
-            include_numbers=st.session_state.get("gen_digits", True),
-            include_symbols=st.session_state.get("gen_symbols", True),
-        )
-        generated_pw = generate_password(opts)
-        st.session_state["form_password"] = generated_pw
-        st.success("Password generated and filled!")
-        st.rerun()
-
     form_suffix = st.session_state.get("form_suffix", "")
 
-    with st.form(f"create_entry_{form_suffix}"):
+    with st.form(key=f"create_entry_{form_suffix}"):
         service = st.text_input(label="Service", placeholder="Youtube", key="form_service")
         username = st.text_input(label="Username", placeholder="Myusername123", key="form_username")
         email = st.text_input(label="Email (optional)", placeholder="johndoe123@provider.com", key="form_email")
@@ -101,12 +102,12 @@ def create_new_entry_form():
                 st.error(f"Error saving entry: {e}")
 
     # Outside the form, so reactive outside form submit cycle
-    if st.checkbox("Generate Random Password", key="generate_random_password"):
+    if st.checkbox(label="Generate Random Password", key="generate_random_password"):
         st.slider(label="Length", min_value=8, max_value=32, value=16, key="gen_length")
         st.checkbox(label="Include Digits", value=True, key="gen_digits")
         st.checkbox(label="Include Symbols", value=True, key="gen_symbols")
         if st.button("Generate Password"):
-            generate_password_callback()
+            generate_password_callback(key_to_fill="form_password")
             st.rerun()
 
 
@@ -176,7 +177,7 @@ def view_entries():
                     render_entry_button(service, username, i, value_hit)
 
             else:
-                sort_option = st.selectbox("Sort by", ["A-Z", "Z-A", "Most Recent"], key="sort_option")
+                sort_option = st.selectbox(label="Sort by", options=["A-Z", "Z-A", "Most Recent"], key="sort_option")
 
                 if sort_option == "Most Recent":
                     flattened = get_flattened_entries(service_groups)
@@ -197,27 +198,109 @@ def view_entries():
     with col2:
         selected_index = st.session_state.selected_entry_index
         selected_entry = decrypt_entry(entries[selected_index], fernet)
+        # create a two col element for service, edit entry button
 
-        st.markdown(f"### <span style='color:#FFA500'>{selected_entry['service'].title()}</span>", unsafe_allow_html=True)
-        st.markdown(f"**Username:** {selected_entry['username']}")
+        if "edit_mode" not in st.session_state:
+            st.session_state["edit_mode"] = False
 
-        # Password field with toggle
-        pw_col1, pw_col2 = st.columns([6, 1])
-        with pw_col2:
-            show_password = st.checkbox("👁", key=f"show_password_{selected_index}")
+        service_col, edit_col = st.columns([3, 1], gap="large")
+        with service_col:
+            st.markdown(f"### <span style='color:#FFA500'>{selected_entry['service'].title()}</span>", unsafe_allow_html=True)
 
-        with pw_col1:
-            display_pw = selected_entry["password"] if show_password else "●●●●●●●●"
-            st.code(display_pw, language="text")
+        with edit_col:
+            if st.button(label="Edit", key="edit_entry"):
+                st.session_state.edit_mode = True
 
-            strength_label, strength_color = STRENGTH_LABELS[int(selected_entry["strength_rating"])]
-            st.markdown(
-                f"<span style='color:{strength_color}; font-size: 15px; font-style: italic;'>{strength_label}</span>",
-                unsafe_allow_html=True
-            )
+        if st.session_state.get("edit_mode"):
+            if "form_password_edit" not in st.session_state:
+                st.session_state["form_password_edit"] = ""
 
-        if selected_entry["email"]:
-            st.markdown(f"**Email:** {selected_entry['email']}")
-        if selected_entry["notes"]:
-            st.markdown(f"**Notes:** {selected_entry['notes']}")
-        st.markdown(f"**Created At:** {selected_entry['created_at']}")
+            with st.form(key="edit_entry_form"):
+                edited_username = st.text_input("Username", value=selected_entry["username"])
+                edited_email = st.text_input("Email", value=selected_entry.get("email", ""))
+                edited_notes = st.text_area("Notes", value=selected_entry.get("notes", ""))
+
+                st.write("Current Password")
+                st.write(selected_entry.get("password", ""))
+
+                edited_password = st.text_input(
+                    "New Password",
+                    value=st.session_state["form_password_edit"],
+                )
+
+                edit_form_col1, edit_form_col2 = st.columns([3, 1])
+                with edit_form_col1:
+                    save_edit = st.form_submit_button(label="Save")
+                with edit_form_col2:
+                    cancel_edit = st.form_submit_button(label="Cancel")
+
+                if cancel_edit:
+                    print("cancelling")
+                    st.session_state.pop("form_password_edit", None)
+                    st.session_state.edit_mode = False
+                    st.rerun()
+
+                elif save_edit:
+                    print("Save clicked")
+                    update_data = {}
+
+                    if edited_username != selected_entry["username"]:
+                        update_data["username"] = encrypt_field(edited_username, fernet)
+
+                    if edited_email != selected_entry.get("email", ""):
+                        update_data["email"] = encrypt_field(edited_email, fernet) if edited_email else None
+
+                    if edited_notes != selected_entry.get("notes", ""):
+                        update_data["notes"] = encrypt_field(edited_notes, fernet) if edited_notes else None
+
+                    if edited_password and edited_password != selected_entry["password"]:
+                        update_data["password_encrypted"] = encrypt_field(edited_password, fernet)
+                        password_strength_val = evaluate_strength(edited_password)
+                        update_data["strength_rating"] = encrypt_field(str(password_strength_val), fernet)
+
+                    if update_data:
+                        update_entry(
+                            entry_id=entries[selected_index].id,
+                            update_data=VaultEntryUpdate(**update_data)
+                        )
+                        st.success("Entry updated successfully!")
+                        time.sleep(2)
+                        st.session_state.pop("form_password_edit", None)
+                        st.session_state.edit_mode = False
+                        st.rerun()
+                    else:
+                        st.warning("No changes detected.")
+
+            # Outside of form
+            if st.checkbox(label="Generate Random Password", key="generate_random_password_edit"):
+                st.slider(label="Length", min_value=8, max_value=32, value=16, key="gen_length")
+                st.checkbox(label="Include Digits", value=True, key="gen_digits")
+                st.checkbox(label="Include Symbols", value=True, key="gen_symbols")
+                if st.button("Generate Password"):
+                    generate_password_callback(key_to_fill="form_password_edit")
+                    st.rerun()
+
+        if not st.session_state.edit_mode:
+            # Displayed first and if edit entry is clicked will change to a form
+            st.markdown(f"**Username:** {selected_entry['username']}")
+
+            # Password field with toggle
+            pw_col1, pw_col2 = st.columns([6, 1])
+            with pw_col2:
+                show_password = st.checkbox("👁", key=f"show_password_{selected_index}")
+
+            with pw_col1:
+                display_pw = selected_entry["password"] if show_password else "●●●●●●●●"
+                st.code(display_pw, language="text")
+
+                strength_label, strength_color = STRENGTH_LABELS[int(selected_entry["strength_rating"])]
+                st.markdown(
+                    f"<span style='color:{strength_color}; font-size: 15px; font-style: italic;'>{strength_label}</span>",
+                    unsafe_allow_html=True
+                )
+
+            if selected_entry["email"]:
+                st.markdown(f"**Email:** {selected_entry['email']}")
+            if selected_entry["notes"]:
+                st.markdown(f"**Notes:** {selected_entry['notes']}")
+            st.markdown(f"**Created At:** {selected_entry['created_at']}")
