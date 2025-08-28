@@ -73,7 +73,8 @@ def main():
 
 if __name__ == '__main__':
     # To start:
-    # - run main.py via streamlit
+    # cd Orangeliquid-Vault
+    # - run -> uv run streamlit run main.py
     # - set master password
     # - .secret_key file is created
     # - vault.db is created via init
@@ -84,5 +85,6 @@ if __name__ == '__main__':
     # - delete .secret_key file
     # - delete .vault_salt
     # - delete vault.db
-    # - run main.py via streamlit
+    # cd Orangeliquid-Vault
+    # - run -> uv run streamlit run main.py
     main()
