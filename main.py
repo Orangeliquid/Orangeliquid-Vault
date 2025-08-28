@@ -12,7 +12,7 @@ def main():
         unsafe_allow_html=True
     )
 
-    # Auth logic
+# ----------------------- Auth logic --------------------------------------------------------
     if "authenticated" not in st.session_state:
         st.session_state["authenticated"] = False
 
@@ -22,8 +22,8 @@ def main():
         else:
             auth_ui.login()
         return  # Stop here if not logged in
-# end of auth logic
 
+# --------------------- Session State Management ------------------------------------
     if st.session_state.get("reset_form"):
         for key in [
             "form_service",
@@ -44,6 +44,7 @@ def main():
     if "show_entries" not in st.session_state:
         st.session_state["show_entries"] = False
 
+# ------------------Column and Button Create -------------------------------------------------------------------
     create_col, view_col, logout_col = st.columns([3, 3, 1])
 
     with create_col:
@@ -63,14 +64,28 @@ def main():
             st.session_state.clear()
             st.rerun()
 
+# ------------------ Function Calling Logic Based On States ---------------------------------------
     if st.session_state["show_create_form"]:
         vault_ui.create_new_entry_form()
     elif st.session_state["show_entries"]:
         vault_ui.view_entries()
 
 
-# Todo - integrate strength reading of current passwords
 # Todo - integrate entry value changing via view entries
+# Todo - integrate password generation under edit form | similar to create entry form logic
 
 if __name__ == '__main__':
+    # To start:
+    # - run main.py via streamlit
+    # - set master password
+    # - .secret_key file is created
+    # - vault.db is created via init
+    # - once signed in .vault_salt is created
+    # - program is ready of use
+    #
+    # To start fresh:
+    # - delete .secret_key file
+    # - delete .vault_salt
+    # - delete vault.db
+    # - run main.py via streamlit
     main()
