@@ -39,7 +39,7 @@ def login() -> bool:
     with st.form("login", enter_to_submit=True):
         password = st.text_input(label="Enter Master Password", placeholder="Master Password", type="password")
 
-        if st.form_submit_button("Save"):
+        if st.form_submit_button("Enter Vault"):
             stored_hash = auth.load_master_password_hash()
 
             if stored_hash is None:
