@@ -60,7 +60,7 @@ def main():
             st.rerun()
 
     with logout_col:
-        if st.button("Log out"):
+        if st.button("Exit Vault"):
             st.session_state.clear()
             st.rerun()
 
