@@ -71,9 +71,6 @@ def main():
         vault_ui.view_entries()
 
 
-# Todo - integrate entry value changing via view entries
-# Todo - integrate password generation under edit form | similar to create entry form logic
-
 if __name__ == '__main__':
     # To start:
     # - run main.py via streamlit
