@@ -60,6 +60,7 @@ def derive_key(password: str, salt: bytes) -> bytes:
     return base64.urlsafe_b64encode(kdf.derive(password.encode()))
 
 
+# If .vault_salt is deleted -> encrypted data will be lost
 def get_or_create_salt() -> bytes:
     """
     Ensure persistent salt for key derivation.
