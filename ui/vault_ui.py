@@ -133,14 +133,17 @@ def view_entries():
     if "results_found_count" not in st.session_state:
         st.session_state.results_found_count = None
 
+    # Create dict based on Service as key,
     service_groups = defaultdict(list)
     for i, entry in enumerate(entries):
         decrypted = decrypt_entry(entry, fernet)
         service_groups[decrypted["service"]].append((i, decrypted))
 
+    # Create search box and set to ""
     entry_search = st.text_input(label="", label_visibility="hidden", placeholder="Search All Entries")
     entry_search_lower = entry_search.lower()  # lowercase entry_search for easier matching
 
+    # search for matching data within entries based on user input within entry_search
     entry_search_matches = []
     for i, decrypted in get_flattened_entries(service_groups):
         username = decrypted["username"]
@@ -169,6 +172,7 @@ def view_entries():
 
     col1, col2 = st.columns([3, 4], gap="large")
 
+    # All entries based on user query params -> Search, or drop down filters
     with col1:
         with st.container(height=500):
 
@@ -195,6 +199,7 @@ def view_entries():
                             if st.button(decrypted["username"], key=f"entry_button_{i}"):
                                 st.session_state.selected_entry_index = i
 
+    # Individual Enty information -> Allows editing
     with col2:
         selected_index = st.session_state.selected_entry_index
         selected_entry = decrypt_entry(entries[selected_index], fernet)
@@ -204,13 +209,17 @@ def view_entries():
             st.session_state["edit_mode"] = False
 
         service_col, edit_col = st.columns([3, 1], gap="large")
+
         with service_col:
-            st.markdown(f"### <span style='color:#FFA500'>{selected_entry['service'].title()}</span>", unsafe_allow_html=True)
+            st.markdown(
+                f"### <span style='color:#FFA500'>{selected_entry['service'].title()}</span>", unsafe_allow_html=True
+            )
 
         with edit_col:
             if st.button(label="Edit", key="edit_entry"):
                 st.session_state.edit_mode = True
 
+        # Within Edit Mode
         if st.session_state.get("edit_mode"):
             if "form_password_edit" not in st.session_state:
                 st.session_state["form_password_edit"] = ""
@@ -280,6 +289,7 @@ def view_entries():
                     generate_password_callback(key_to_fill="form_password_edit")
                     st.rerun()
 
+        # Non-Edit mode -> simply display user selected entry
         if not st.session_state.edit_mode:
             # Displayed first and if edit entry is clicked will change to a form
             st.markdown(f"**Username:** {selected_entry['username']}")
